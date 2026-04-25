@@ -1,115 +1,234 @@
 <!doctype html>
 <html lang="en">
-  
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<meta name="theme-color" content="#ff6ad5" />
-<title>Gala Punks NFT © </title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Gala Punks NFT</title>
+
 <style>
 :root{
-  --bg-overlay: rgba(0,0,0,0.35);
-  --accent: #ff6ad5;
-  --card-w: 84vw;
-  --card-h: 56vw;
-  --gutter: 8vw;
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  --accent:#ff6ad5;
 }
-html,body{height:100%;margin:0;background:#000;color:#fff;-webkit-font-smoothing:antialiased}
-
-/* background image */
-.bg{position:fixed;inset:0;background:center/cover no-repeat url('image.png');filter:contrast(1.03) saturate(1.15);z-index:0;}
-.bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.2),rgba(0,0,0,0.6));}
+body{
+  margin:0;
+  background:#000;
+  color:#fff;
+  font-family:Inter,system-ui;
+}
 
 /* layout */
-.app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column}
-.header{display:flex;align-items:center;justify-content:space-between;padding:14px 6vw}
-.title{font-weight:700;font-size:16px;letter-spacing:0.6px}
-.subtitle{font-size:11px;opacity:0.9}
-.connect-btn{background:linear-gradient(90deg,var(--accent),#ffd36a);border:none;padding:8px 12px;border-radius:999px;font-weight:600;color:#000}
+.header{
+  display:flex;
+  justify-content:space-between;
+  padding:16px;
+}
+.connect-btn{
+  background:linear-gradient(90deg,#ff6ad5,#ffd36a);
+  border:none;
+  padding:8px 12px;
+  border-radius:999px;
+  font-weight:600;
+}
 
-/* scroll stage */
-.stage{height:220vh;position:relative}
-.sticky{position:sticky;top:12vh;height:76vh;display:flex;align-items:center;overflow:hidden}
-.track{display:flex;gap:calc(var(--gutter));align-items:center;padding-left:6vw;padding-right:6vw;transition:transform 240ms cubic-bezier(.22,.9,.36,1)}
+/* card */
+.card{
+  max-width:420px;
+  margin:40px auto;
+  background:#111;
+  border-radius:16px;
+  overflow:hidden;
+}
+.card img{width:100%;}
+.meta{padding:12px;}
 
-.card{width:var(--card-w);height:var(--card-h);flex:0 0 auto;background:linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02));backdrop-filter:blur(6px);border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,0.45);position:relative;overflow:hidden;display:flex;flex-direction:column}
-.card img{width:100%;height:auto;display:block}
-.card .meta{padding:10px 12px;font-size:13px}
-.card .name{font-weight:700}
-.card .desc{font-size:11px;opacity:0.85;margin-top:4px}
-.footer{padding:18px 6vw 48px;display:flex;flex-direction:column;gap:10px}
-.controls{display:flex;gap:8px}
-.chip{background:rgba(255,255,255,0.06);padding:8px 10px;border-radius:999px;font-size:13px}
-.card:active{transform:scale(.995)}
-@media (min-width:700px){:root{--card-w:56vw;--card-h:36vw}}
+.mint-btn{
+  margin-top:10px;
+  width:100%;
+  padding:10px;
+  border:none;
+  border-radius:10px;
+  font-weight:700;
+  background:linear-gradient(90deg,#00ffa3,#00c3ff);
+  color:#000;
+}
+
+/* modal */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.7);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:10;
+}
+.hidden{display:none;}
+
+.modal-box{
+  background:#111;
+  padding:20px;
+  border-radius:16px;
+  text-align:center;
+  animation:pop .25s ease;
+}
+
+@keyframes pop{
+  from{transform:scale(.8);opacity:0}
+  to{transform:scale(1);opacity:1}
+}
+
+button{
+  cursor:pointer;
+}
 </style>
 </head>
+
 <body>
-<div class="bg" aria-hidden="true"></div>
-<div class="app">
-  <header class="header">
-    <div>
-      <div class="title">Gala Punks NFTs</div>
-      <div class="subtitle">Get It Popp'n</div>
-    </div>
-    <div><button id="connect" class="connect-btn">Connect Wallet</button></div>
-  </header>
 
-  <main>
-    <section class="stage">
-      <div class="sticky" id="sticky">
-        <div class="track" id="track"></div>
-      </div>
-    </section>
-
-    <section class="footer">
-      <div class="controls">
-        <div class="chip">Collect Your Gala Punks NFT Avatars</div>
-      </div>
-    </section>
-  </main>
+<div class="header">
+  <div>Gala Punks NFTs</div>
+  <button id="connect" class="connect-btn">Connect</button>
 </div>
 
-<!-- Web3 + Ethers imports -->
-<!-- Ethers v5 -->
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<div class="card">
+  <img src="https://ipfs.io/ipfs/bafybeicx7hx25izvsfpgppvc4xmsmq4rn6ch42bml6rkzhewegrrvg3vta">
+  <div class="meta">
+    <div><b>FREE Gala-Punk Artifact</b></div>
+    <button class="mint-btn" id="mintBtn">Mint</button>
+  </div>
+</div>
 
-<!-- Web3Modal v1 + WalletConnect v1 -->
+<!-- Modal -->
+<div id="mintModal" class="modal hidden">
+  <div class="modal-box">
+    <h3>Mint FREE Artifact</h3>
+    <p>Token ID: 0</p>
+    <button id="confirmMint">Confirm</button>
+    <br><br>
+    <button onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- libs -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
 <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
 <script>
-(async () => {
-  const providerOptions = {
-    walletconnect: {
-      package: window.WalletConnectProvider.default,
-      options: {
-        infuraId: "YOUR_INFURA_ID" // or RPCs
+let provider;
+let ethersProvider;
+
+const CONTRACT = "0x4B2A3C3b7D80c75D5e47b7a26f913CbA79E9AB57";
+
+const ABI = [
+  "function mint(uint256 id, uint256 amount) payable"
+];
+
+// Base network
+async function ensureBase() {
+  const chainId = "0x2105";
+
+  const current = await provider.request({ method: "eth_chainId" });
+
+  if (current !== chainId) {
+    try {
+      await provider.request({
+        method:"wallet_switchEthereumChain",
+        params:[{chainId}]
+      });
+    } catch (e) {
+      if (e.code === 4902) {
+        await provider.request({
+          method:"wallet_addEthereumChain",
+          params:[{
+            chainId,
+            chainName:"Base",
+            nativeCurrency:{name:"ETH",symbol:"ETH",decimals:18},
+            rpcUrls:["https://mainnet.base.org"],
+            blockExplorerUrls:["https://basescan.org"]
+          }]
+        });
+      } else {
+        throw e;
       }
     }
-  };
+  }
+}
 
-  const web3Modal = new window.Web3Modal.default({
-    cacheProvider: false,
-    providerOptions
-  });
-
-  const connectBtn = document.getElementById("connect");
-  let provider, ethersProvider;
-
-  connectBtn.addEventListener("click", async () => {
-    try {
-      provider = await web3Modal.connect();
-      ethersProvider = new ethers.providers.Web3Provider(provider);
-      const signer = ethersProvider.getSigner();
-      const address = await signer.getAddress();
-      connectBtn.textContent = address.slice(0, 6) + "..." + address.slice(-4);
-    } catch (err) {
-      console.error(err);
+// connect wallet
+const web3Modal = new window.Web3Modal.default({
+  cacheProvider:false,
+  providerOptions:{
+    walletconnect:{
+      package:window.WalletConnectProvider.default,
+      options:{ infuraId:"YOUR_INFURA_ID" }
     }
-  });
-})();
+  }
+});
+
+document.getElementById("connect").onclick = async () => {
+  try {
+    provider = await web3Modal.connect();
+    ethersProvider = new ethers.providers.Web3Provider(provider);
+
+    await ensureBase();
+
+    const signer = ethersProvider.getSigner();
+    const addr = await signer.getAddress();
+
+    document.getElementById("connect").innerText =
+      addr.slice(0,6)+"..."+addr.slice(-4);
+
+  } catch (e) {
+    alert("Connection failed");
+    console.error(e);
+  }
+};
+
+// modal controls
+function openModal(){
+  document.getElementById("mintModal").classList.remove("hidden");
+}
+function closeModal(){
+  document.getElementById("mintModal").classList.add("hidden");
+}
+
+document.getElementById("mintBtn").onclick = async () => {
+  if (!ethersProvider) {
+    alert("Connect wallet first");
+    return;
+  }
+  openModal();
+};
+
+// mint
+document.getElementById("confirmMint").onclick = async () => {
+  try {
+    const signer = ethersProvider.getSigner();
+
+    await ensureBase();
+
+    // signature prompt
+    await signer.signMessage("Mint FREE Gala-Punk Artifact");
+
+    const contract = new ethers.Contract(CONTRACT, ABI, signer);
+
+    const tx = await contract.mint(0,1,{
+      value:0
+    });
+
+    alert("Minting...");
+    await tx.wait();
+
+    alert("Mint success!");
+    closeModal();
+
+  } catch (e) {
+    console.error(e);
+    alert("Mint failed: " + (e.data?.message || e.message));
+  }
+};
 </script>
+
 </body>
 </html>
