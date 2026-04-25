@@ -9,11 +9,15 @@
 :root{
   --accent:#ff6ad5;
 }
+
+/* FIXED BACKGROUND */
 body{
   margin:0;
-  background:#000;
   color:#fff;
   font-family:Inter,system-ui;
+  background:
+    linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.7)),
+    url('image.png') center/cover no-repeat fixed;
 }
 
 /* layout */
@@ -22,6 +26,7 @@ body{
   justify-content:space-between;
   padding:16px;
 }
+
 .connect-btn{
   background:linear-gradient(90deg,#ff6ad5,#ffd36a);
   border:none;
@@ -34,11 +39,14 @@ body{
 .card{
   max-width:420px;
   margin:40px auto;
-  background:#111;
+  background:rgba(0,0,0,0.6);
+  backdrop-filter:blur(6px);
   border-radius:16px;
   overflow:hidden;
 }
+
 .card img{width:100%;}
+
 .meta{padding:12px;}
 
 .mint-btn{
@@ -52,7 +60,7 @@ body{
   color:#000;
 }
 
-/* modal */
+/* MODAL FIX */
 .modal{
   position:fixed;
   inset:0;
@@ -62,7 +70,10 @@ body{
   justify-content:center;
   z-index:10;
 }
-.hidden{display:none;}
+
+.hidden{
+  display:none !important;
+}
 
 .modal-box{
   background:#111;
@@ -70,6 +81,7 @@ body{
   border-radius:16px;
   text-align:center;
   animation:pop .25s ease;
+  max-width:300px;
 }
 
 @keyframes pop{
@@ -100,12 +112,12 @@ button{
 
 <!-- Modal -->
 <div id="mintModal" class="modal hidden">
-  <div class="modal-box">
+  <div class="modal-box" id="modalBox">
     <h3>Mint FREE Artifact</h3>
     <p>Token ID: 0</p>
     <button id="confirmMint">Confirm</button>
     <br><br>
-    <button onclick="closeModal()">Cancel</button>
+    <button id="cancelMint">Cancel</button>
   </div>
 </div>
 
@@ -117,6 +129,7 @@ button{
 <script>
 let provider;
 let ethersProvider;
+let isConnected = false;
 
 const CONTRACT = "0x4B2A3C3b7D80c75D5e47b7a26f913CbA79E9AB57";
 
@@ -124,10 +137,9 @@ const ABI = [
   "function mint(uint256 id, uint256 amount) payable"
 ];
 
-// Base network
+// BASE NETWORK
 async function ensureBase() {
   const chainId = "0x2105";
-
   const current = await provider.request({ method: "eth_chainId" });
 
   if (current !== chainId) {
@@ -155,7 +167,7 @@ async function ensureBase() {
   }
 }
 
-// connect wallet
+// WALLET CONNECT
 const web3Modal = new window.Web3Modal.default({
   cacheProvider:false,
   providerOptions:{
@@ -179,53 +191,68 @@ document.getElementById("connect").onclick = async () => {
     document.getElementById("connect").innerText =
       addr.slice(0,6)+"..."+addr.slice(-4);
 
+    isConnected = true;
+
   } catch (e) {
-    alert("Connection failed");
     console.error(e);
+    alert("Connection failed");
   }
 };
 
-// modal controls
+// MODAL CONTROLS
+const modal = document.getElementById("mintModal");
+const modalBox = document.getElementById("modalBox");
+
 function openModal(){
-  document.getElementById("mintModal").classList.remove("hidden");
-}
-function closeModal(){
-  document.getElementById("mintModal").classList.add("hidden");
+  modal.classList.remove("hidden");
 }
 
-document.getElementById("mintBtn").onclick = async () => {
-  if (!ethersProvider) {
+function closeModal(){
+  modal.classList.add("hidden");
+}
+
+// CLICK OUTSIDE TO CLOSE
+modal.addEventListener("click", (e) => {
+  if (e.target === modal) {
+    closeModal();
+  }
+});
+
+// cancel button
+document.getElementById("cancelMint").onclick = closeModal;
+
+// MINT BUTTON
+document.getElementById("mintBtn").onclick = () => {
+  if (!isConnected) {
     alert("Connect wallet first");
     return;
   }
   openModal();
 };
 
-// mint
+// MINT FLOW
 document.getElementById("confirmMint").onclick = async () => {
   try {
     const signer = ethersProvider.getSigner();
 
     await ensureBase();
 
-    // signature prompt
     await signer.signMessage("Mint FREE Gala-Punk Artifact");
 
     const contract = new ethers.Contract(CONTRACT, ABI, signer);
 
-    const tx = await contract.mint(0,1,{
-      value:0
-    });
+    const tx = await contract.mint(0,1,{ value:0 });
 
     alert("Minting...");
     await tx.wait();
 
-    alert("Mint success!");
+    alert("Mint successful!");
     closeModal();
 
   } catch (e) {
     console.error(e);
     alert("Mint failed: " + (e.data?.message || e.message));
+    closeModal(); // fallback close
   }
 };
 </script>
