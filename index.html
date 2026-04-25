@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Gala Punks NFT</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Inter,system-ui;
+  color:#fff;
+  background:
+    linear-gradient(rgba(0,0,0,0.6),rgba(0,0,0,0.8)),
+    url('image.png') center/cover no-repeat fixed;
+}
+
+.header{
+  display:flex;
+  justify-content:space-between;
+  padding:16px;
+}
+
+.card{
+  max-width:420px;
+  margin:40px auto;
+  background:rgba(0,0,0,0.6);
+  backdrop-filter:blur(6px);
+  border-radius:16px;
+  overflow:hidden;
+}
+
+.card img{width:100%;}
+
+.meta{padding:12px;}
+
+.mint-btn{
+  width:100%;
+  padding:10px;
+  margin-top:10px;
+  border:none;
+  border-radius:10px;
+  font-weight:700;
+  background:linear-gradient(90deg,#00ffa3,#00c3ff);
+  color:#000;
+}
+
+.mint-btn:disabled{
+  background:#444;
+  color:#999;
+  cursor:not-allowed;
+}
+
+/* progress */
+.progress{
+  margin-top:10px;
+  height:10px;
+  background:#222;
+  border-radius:999px;
+  overflow:hidden;
+}
+.progress-bar{
+  height:100%;
+  width:0%;
+  background:linear-gradient(90deg,#ff6ad5,#ffd36a);
+}
+
+/* modal */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.7);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.hidden{display:none;}
+
+.modal-box{
+  background:#111;
+  padding:20px;
+  border-radius:16px;
+}
+
+/* toast */
+.toast-container{
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.toast{
+  background:#111;
+  padding:12px 16px;
+  border-radius:10px;
+}
+.toast.success{border-left:4px solid #00ffa3;}
+.toast.error{border-left:4px solid #ff4d4d;}
+.toast.info{border-left:4px solid #00c3ff;}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <div>Gala Punks NFTs</div>
+  <button id="connect">Connect</button>
+</div>
+
+<div class="card">
+  <img src="https://ipfs.io/ipfs/bafybeicx7hx25izvsfpgppvc4xmsmq4rn6ch42bml6rkzhewegrrvg3vta">
+  <div class="meta">
+    <b>FREE Gala-Punk Artifact</b>
+
+    <div class="progress">
+      <div id="progressBar" class="progress-bar"></div>
+    </div>
+    <div id="supplyText"></div>
+
+    <div id="cooldownText" style="font-size:12px;margin-top:6px;"></div>
+
+    <button class="mint-btn" id="mintBtn">Mint</button>
+  </div>
+</div>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-box">
+    <h3>Confirm Mint</h3>
+    <button id="confirmMint">Mint</button>
+    <button onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<div id="toasts" class="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+<script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+
+<script>
+let provider, ethersProvider, userAddress=null;
+
+const CONTRACT="0x4B2A3C3b7D80c75D5e47b7a26f913CbA79E9AB57";
+
+const ABI=[
+  "function mint(uint256 id,uint256 amount) payable",
+  "function totalSupply(uint256 id) view returns(uint256)",
+  "function artifacts(uint256 id) view returns(uint128,uint128,bool,string)",
+  "function walletMinted(address,uint256) view returns(uint256)",
+  "function lastMint(address,uint256) view returns(uint256)",
+  "function COOLDOWN() view returns(uint256)",
+  "function MAX_PER_WALLET() view returns(uint256)"
+];
+
+// TOAST
+function toast(msg,type="info"){
+  const el=document.createElement("div");
+  el.className="toast "+type;
+  el.innerText=msg;
+  document.getElementById("toasts").appendChild(el);
+  setTimeout(()=>el.remove(),3000);
+}
+
+// BASE
+async function ensureBase(){
+  const chainId="0x2105";
+  const current=await provider.request({method:"eth_chainId"});
+  if(current!==chainId){
+    await provider.request({
+      method:"wallet_switchEthereumChain",
+      params:[{chainId}]
+    });
+  }
+}
+
+// CONNECT
+const web3Modal=new window.Web3Modal.default({
+  cacheProvider:false,
+  providerOptions:{
+    walletconnect:{
+      package:window.WalletConnectProvider.default,
+      options:{infuraId:"YOUR_INFURA_ID"}
+    }
+  }
+});
+
+document.getElementById("connect").onclick=async()=>{
+  provider=await web3Modal.connect();
+  ethersProvider=new ethers.providers.Web3Provider(provider);
+
+  await ensureBase();
+
+  const signer=ethersProvider.getSigner();
+  userAddress=await signer.getAddress();
+
+  document.getElementById("connect").innerText=
+    userAddress.slice(0,6)+"..."+userAddress.slice(-4);
+
+  toast("Wallet connected","success");
+
+  loadState();
+};
+
+// MODAL
+const modal=document.getElementById("modal");
+function openModal(){ modal.classList.remove("hidden"); }
+function closeModal(){ modal.classList.add("hidden"); }
+modal.onclick=e=>{ if(e.target===modal) closeModal(); };
+
+// LOAD STATE
+let cooldownInterval;
+
+async function loadState(){
+  const rpc=new ethers.providers.JsonRpcProvider("https://mainnet.base.org");
+  const contract=new ethers.Contract(CONTRACT,ABI,rpc);
+
+  const supply=await contract.totalSupply(0);
+  const art=await contract.artifacts(0);
+
+  const max=art[1];
+  const percent=max>0?(supply/max)*100:0;
+
+  document.getElementById("progressBar").style.width=percent+"%";
+  document.getElementById("supplyText").innerText=`${supply} / ${max}`;
+
+  if(!userAddress) return;
+
+  const minted=await contract.walletMinted(userAddress,0);
+  const last=await contract.lastMint(userAddress,0);
+  const cooldown=await contract.COOLDOWN();
+  const maxWallet=await contract.MAX_PER_WALLET();
+
+  const now=Math.floor(Date.now()/1000);
+  const remaining = (last + cooldown) - now;
+
+  const btn=document.getElementById("mintBtn");
+  const cdText=document.getElementById("cooldownText");
+
+  // RESET
+  btn.disabled=false;
+  cdText.innerText="";
+
+  // SOLD OUT
+  if(supply >= max){
+    btn.disabled=true;
+    btn.innerText="Sold Out";
+    return;
+  }
+
+  // WALLET LIMIT
+  if(minted >= maxWallet){
+    btn.disabled=true;
+    btn.innerText="Limit Reached";
+    return;
+  }
+
+  // COOLDOWN
+  if(remaining > 0){
+    btn.disabled=true;
+
+    updateCooldownUI(remaining);
+
+    clearInterval(cooldownInterval);
+    cooldownInterval=setInterval(()=>{
+      loadState();
+    },1000);
+
+    return;
+  }
+
+  btn.innerText="Mint";
+}
+
+// COOLDOWN DISPLAY
+function updateCooldownUI(sec){
+  const el=document.getElementById("cooldownText");
+
+  const h=Math.floor(sec/3600);
+  const m=Math.floor((sec%3600)/60);
+  const s=sec%60;
+
+  el.innerText=`Cooldown: ${h}h ${m}m ${s}s`;
+}
+
+// MINT BUTTON
+document.getElementById("mintBtn").onclick=()=>{
+  if(!userAddress){
+    toast("Connect wallet first","error");
+    return;
+  }
+  openModal();
+};
+
+// MINT
+document.getElementById("confirmMint").onclick=async()=>{
+  try{
+    const signer=ethersProvider.getSigner();
+    await ensureBase();
+
+    await signer.signMessage("Mint FREE Gala-Punk Artifact");
+
+    const contract=new ethers.Contract(CONTRACT,ABI,signer);
+
+    toast("Minting...","info");
+
+    const tx=await contract.mint(0,1,{value:0});
+    await tx.wait();
+
+    toast("Mint success","success");
+
+    closeModal();
+    loadState();
+
+  }catch(e){
+    toast("Mint failed","error");
+    closeModal();
+  }
+};
+
+// INIT
+loadState();
+</script>
+
+</body>
+</html>
